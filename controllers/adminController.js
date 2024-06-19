@@ -15,7 +15,7 @@ export const adminLogin = (req, res) => {
        
         if (email === adminEmail) {
             if (adminPassword === password) {
-                // Generate JWT token
+           
                 const token = jwt.sign(
                     {
                         name: userName,
@@ -28,14 +28,14 @@ export const adminLogin = (req, res) => {
                     }
                 );
 
-                // Return success response with token
+               
                 return res.status(200).json({ userName, token, message: `Welcome ${userName}` });
             } else {
-                // Incorrect password
+               
                 return res.status(403).json({ message: "Incorrect Password" });
             }
         } else {
-            // Incorrect email
+        
             return res.status(401).json({ message: "Incorrect Email" });
         }
     } catch (error) {
@@ -44,42 +44,35 @@ export const adminLogin = (req, res) => {
     }
 };
 
-
-export const userList = async (req,res)=>{
-    try{
-        const users = await User.find()
-        res.status(200).json({users})
-    }catch(error){
-console.log(error.message)
-res.status(200).json({status:"internal server error"})
+export const userList = async (req, res) => {
+    try {
+        const users = await User.find();
+        res.status(200).json({ users });
+    } catch (error) {
+        console.log(error.message);
+        res.status(500).json({ status: "internal server error" });
     }
-}
+};
 
-export const userBlock = async (req,res)=>{
-    try{
-        const {userId,status} = req.body
+
+export const userBlock = async (req, res) => {
+    try {
+        const { userId } = req.body;
         const user = await User.findById(userId);
 
-        if(!user){
-            return res.status(404).json({message:"user not found"})
+        if (!user) {
+            return res.status(404).json({ message: "user not found" });
         }
-        const updatedStatus = !status
 
-        await  User.findByIdAndUpdate(
-            {_id:userId},
-            {$set:{isBlocked:updatedStatus}}
-        );
-        let message = ""
-        if(updatedStatus){
-            message = "User is Blocked"
-        }  else {
-            message = "User is Unblocked"
-        }
-        res.status(200).json({message})
-    } catch(error){
-        console.log(error.message)
-        res.status(500).json({status:"internal server error"})
+        const updatedStatus = !user.isBlocked;
+
+        await User.findByIdAndUpdate(userId, { isBlocked: updatedStatus });
+
+        const message = updatedStatus ? "User is Blocked" : "User is Unblocked";
+        res.status(200).json({ message });
+    } catch (error) {
+        console.log(error.message);
+        res.status(500).json({ status: "internal server error" });
     }
-}
-
+};
 

@@ -26,7 +26,7 @@ const sendMailOtp = async (name, email, userId) => {
           <div style="margin: 50px auto; width: 70%; padding: 20px 0">
             <div style="border-bottom: 1px solid #eee">
               <a href="" style="font-size: 1.4em; color: red; text-decoration: none; font-weight: 600">
-                StayMate
+                F7 - CLUB
               </a>
             </div>
             <p style="font-size: 1.1em">Hi,${name}</p>
