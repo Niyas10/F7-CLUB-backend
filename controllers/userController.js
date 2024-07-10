@@ -1,8 +1,8 @@
 import User from "../models/userModel.js";
+import Blog from "../models/blogModel.js";
 import Otp from "../models/otpModel.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import nodemailer from "nodemailer";
 import sendMailOtp from "../utils/nodeMailer.js";
 import securePassword from "../utils/securePassword.js";
 import Workout from "../models/workoutModel.js";
@@ -129,22 +129,6 @@ export const loginVerification = async (req, res) => {
   }
 };
 
-export const workout = async (req, res) => {
-  try {
-    const workoutData = await Workout.find();
-    if (workoutData) {
-      res.status(200).json({ workout: workoutData });
-    } else {
-      res
-        .status(500)
-        .json({ message: "something wrong finding workout data " });
-    }
-  } catch (error) {
-    console.log(error.message);
-    return res.status(500).json({ message: "internal server error" });
-  }
-};
-
 export const requestPasswordReset = async (req, res) => {
   try {
     const { email } = req.body;
@@ -155,9 +139,9 @@ export const requestPasswordReset = async (req, res) => {
     const otpId = await sendMailOtp(user.name, user.email, user._id);
     return res.status(200).json({
       message: `OTP has been sent to ${email}`,
-      otpId  : otpId,
-      userId : user._id,
-      email  : user.email
+      otpId: otpId,
+      userId: user._id,
+      email: user.email,
     });
   } catch (error) {
     return res.status(500).json({ message: "internal servere error" });
@@ -167,7 +151,7 @@ export const requestPasswordReset = async (req, res) => {
 export const requestPasswordOtpVerify = async (req, res) => {
   try {
     const { otp, userId } = req.body;
-  
+
     if (!otp || !userId) {
       return res.status(400).json({ message: "OTP and userId are required" });
     }
@@ -192,25 +176,133 @@ export const requestPasswordOtpVerify = async (req, res) => {
   }
 };
 
-export const resetPassword = async(req,res)=>{
-    try{
-      const {password,userId} = req.body
-       console.log(password,userId +'hey')
-      if(!password || !userId){
-        return res.status(400).json({message : 'Password and userId required'})
-      }
-      const user = await User.findById(userId)
-      
-      if(!user){
-        return res.status(404).json({message:'User not found'})
-      }
-      const hashedPassword = await securePassword(password)
-      user.password = hashedPassword
-      await user.save()
-    
-      return res.status(200).json({message:'Password reset successfull'})
-    }catch(error){
-      console.log('hey its me ',error);
-      return res.status(500).json({message:"internal Server Error"})
+export const resetPassword = async (req, res) => {
+  try {
+    const { password, userId } = req.body;
+    console.log(password, userId + "hey");
+    if (!password || !userId) {
+      return res.status(400).json({ message: "Password and userId required" });
     }
-}
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    const hashedPassword = await securePassword(password);
+    user.password = hashedPassword;
+    await user.save();
+
+    return res.status(200).json({ message: "Password reset successfull" });
+  } catch (error) {
+    console.log("hey its me ", error);
+    return res.status(500).json({ message: "internal Server Error" });
+  }
+};
+
+export const workout = async (req, res) => {
+  try {
+    const workoutData = await Workout.find();
+    if (workoutData) {
+      res.status(200).json({ workout: workoutData });
+    } else {
+      res
+        .status(500)
+        .json({ message: "something wrong finding workout data " });
+    }
+  } catch (error) {
+    console.log(error.message);
+    return res.status(500).json({ message: "internal server error" });
+  }
+};
+
+export const viewWorkout = async (req, res) => {
+  try {
+    const workoutId = req.params.id;
+    const workout = await Workout.findById(workoutId);
+
+    if (workout) {
+      res.status(200).json({ workout });
+    } else {
+      res.status(404).json({ message: "Workout not found" });
+    }
+  } catch (error) {
+    console.error(error.message);
+    res.status(500).json({ message: "internal server error" });
+  }
+};
+
+export const blog = async (req, res) => {
+  try {
+    const blogData = await Blog.find();
+    if (blogData) {
+      res.status(200).json({ message: blogData });
+    } else {
+      res.status(500).josn({ message: "somthing wrong finding blog data " });
+    }
+  } catch (error) {
+    console.error(error.message);
+    return res.status(500).json({ message: "Internal server error:", error });
+  }
+};
+
+export const forgotResendOtp = async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ status: false, message: "User not found" });
+    }
+
+    // Generate new OTP
+    const newOtp = Math.floor(1000 + Math.random() * 9000).toString();
+
+    // Create or update OTP document
+    let otpDoc = await Otp.findOne({ userId: user._id });
+    if (!otpDoc) {
+      otpDoc = new Otp({ userId: user._id });
+    }
+
+    otpDoc.otp = newOtp;
+    otpDoc.createdAt = new Date();
+    otpDoc.expiresAt = new Date(new Date().getTime() + 5 * 60000); // 5 minutes expiry
+    await otpDoc.save();
+
+    // Send OTP via email
+    try {
+      const otpId = await sendMailOtp(user.name, user.email, userId);
+      console.log(otpId);
+      res
+        .status(200)
+        .json({ status: true, message: "OTP resent successfully" });
+    } catch (emailError) {
+      return res.status(500).json({
+        status: false,
+        message: "Failed to send OTP email",
+        error: emailError.message,
+      });
+    }
+  } catch (error) {
+    res.status(500).json({
+      status: false,
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
+export const viewBlog = async (req, res) => {
+  console.log("hey");
+  try {
+    const blogId = req.params.id;
+    console.log(blogId + "hey");
+    const blog = await Blog.findById(blogId);
+    if (blog) {
+      res.status(200).json({ blog });
+    } else {
+      res.status(404).json({ message: "blog not found" });
+    }
+  } catch (error) {
+    console.error(error.message);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};

@@ -51,14 +51,14 @@ export const editWorkoutDeatiles = async (req, res) => {
     return res.status(404).json({ message: "Workout Not Found" });
   } catch (error) {
     console.log(error.message);
-    res.status(500).json({ status: "internal server error" });
+    res.status(500).json({ message: "internal server error" });
   }
 };
 
 
 
 
-export const editWork = async (req, res) => {
+export const saveEditWorkout = async (req, res) => {
   const {
     workoutId,
     workoutName,
@@ -96,5 +96,32 @@ export const editWork = async (req, res) => {
   } catch (error) {
     console.error('Error updating workout:', error);
     res.status(500).json({ message: 'Error updating workout', error });
+  }
+};
+
+
+export const deleteWorkout = async (req, res) => {
+  try {
+    const { workoutId } = req.params;
+    console.log(`Deleting workout with ID: ${workoutId}`);
+
+    const workout = await Workout.findById(workoutId);
+    if (!workout) {
+      return res.status(404).json({ message: 'Workout not found' });
+    }
+
+    if (workout.images && workout.images.length > 0) {
+      const deletePromises = workout.images.map((image) => {
+        const publicId = image.split('/').pop().split('.')[0];
+        return cloudinary.uploader.destroy(`Workout/${publicId}`);
+      });
+      await Promise.all(deletePromises);
+    }
+
+    await Workout.findByIdAndDelete(workoutId);
+    res.status(200).json({ message: 'Workout deleted successfully' });
+  } catch (error) {
+    console.error(error.message);
+    res.status(500).json({ message: 'Internal server error' });
   }
 };
